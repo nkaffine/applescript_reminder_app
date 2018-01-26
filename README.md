@@ -1,4 +1,7 @@
 # applescript_reminder_app
+
+Last Updated 5/27/2017
+
 This is an application that is designed to use applescript to interface with a Numbers spreadsheet that is acting as a database.
 
 The applecript allows you to put in things that you need to do, add dates that they are due, add an estiamted completion time,
