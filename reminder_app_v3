@@ -1,0 +1,2059 @@
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Misc Functions that help with Applescript 
+
+
+-- Any Any str -> Display Dialog or Nothing
+-- If the two values are different, pops up a dialog that says
+-- with the str
+on checkExpect(a1, a2, str)
+	if a1 is not a2 then
+		display dialog (str & " expected " & a1 & " but got " & a2)
+	end if
+end checkExpect
+
+-- [List-of Number] -> Number
+-- Returns the greatest number in a list of numbers
+on getMax(theList)
+	if (count of theList) is 0 then
+		return 0
+	else
+		set theCount to (count of theList) - 1
+		repeat theCount times
+			if (item 1 of theList) > (item 2 of theList) then
+				if (count of theList) is 2 then
+					set theList to {(item 1 of theList)}
+				else
+					set theList to {(item 1 of theList)} & (items 3 thru (count of theList) of theList)
+				end if
+			else
+				if (count of theList) is 2 then
+					set theList to {(item 2 of theList)}
+				else
+					set theList to {(item 2 of theList)} & (items 3 thru (count of theList) of theList)
+				end if
+			end if
+		end repeat
+		return (item 1 of theList)
+	end if
+end getMax
+
+-- [List-of X] String String String-> X
+-- Limits the choose from list to be 10 items and adds a more button to view more results
+on chooseFromBigList(theList, thePrompt, theTitle, repeatedItem)
+	return chooseFromBigListHelper(theList, thePrompt, theTitle, repeatedItem, 0) as text
+end chooseFromBigList
+
+-- [List-of X] String String String Number -> X
+-- Helper function for choose from big list to allow for the more button
+on chooseFromBigListHelper(theList, thePrompt, theTitle, repeatedItem, i)
+	if (count of theList) = 0 then
+		return choose from list {repeatedItem} with title theTitle with prompt thePrompt default items repeatedItem as text
+	else
+		if (count of theList) > (11 + i) then
+			if (count of theList) ≥ (i + 10) then
+				set subList to (items (1 + i) thru (10 + i) of theList)
+			else
+				set subList to (items (1 + i) thru (count of theList) of theList)
+			end if
+			choose from list {"Search", repeatedItem} & subList & {"More"} with title theTitle with prompt thePrompt default items repeatedItem
+			set theValue to the result
+			if theValue is {"More"} then
+				return chooseFromBigListHelper(theList, thePrompt, theTitle, repeatedItem, (i + 10)) as text
+			else if theValue is {"Search"} then
+				return searchListRepeatedItem(theList, thePrompt, theTitle, repeatedItem)
+			else
+				return theValue as text
+			end if
+		else
+			if (count of theList) ≥ (i + 10) then
+				set subList to (items (1 + i) thru (10 + i) of theList)
+			else
+				set subList to (items (1 + i) thru (count of theList) of theList)
+			end if
+			choose from list {repeatedItem} & subList with title theTitle with prompt thePrompt default items repeatedItem
+			return the result as text
+		end if
+	end if
+end chooseFromBigListHelper
+
+-- [List-of X] String String-> X
+-- Limits the choose from list to be 10 items and adds a more button to view more results
+on chooseFromBigListNoRepeat(theList, thePrompt, theTitle)
+	return chooseFromBigListNoRepeatHelper(theList, thePrompt, theTitle, 0) as text
+end chooseFromBigListNoRepeat
+
+-- [List-of X] String String Number -> X
+-- Helper function for choose from big list to allow for the more button
+on chooseFromBigListNoRepeatHelper(theList, thePrompt, theTitle, i)
+	if (count of theList) = 0 then
+		return choose from list {} with title theTitle with prompt thePrompt default items {} as text
+	else
+		if (count of theList) > (11 + i) then
+			if (count of theList) ≥ (i + 10) then
+				set subList to (items (1 + i) thru (10 + i) of theList)
+			else
+				set subList to (items (1 + i) thru (count of theList) of theList)
+			end if
+			choose from list {"Search"} & subList & {"More"} with title theTitle with prompt thePrompt default items (item 1 of subList)
+			set theValue to the result
+			if theValue is {"More"} then
+				return chooseFromBigListHelper(theList, thePrompt, theTitle, (i + 10)) as text
+			else if theValue is {"Search"} then
+				return searchListNoRepeatedItem(theList, thePrompt, theTitle)
+			else
+				return theValue as text
+			end if
+		else
+			if (count of theList) ≥ (i + 10) then
+				set subList to (items (1 + i) thru (10 + i) of theList)
+			else
+				set subList to (items (1 + i) thru (count of theList) of theList)
+			end if
+			choose from list subList with title theTitle with prompt thePrompt default items (item 1 of subList)
+			return the result as text
+		end if
+	end if
+end chooseFromBigListNoRepeatHelper
+
+-- X [List-of X] -> Number
+-- Gets the item number of the given item in the given list
+on getItemNumber(theItem, theList)
+	repeat with i from 1 to (count of theList)
+		if (item i of theList) is theItem then
+			return i
+		end if
+	end repeat
+end getItemNumber
+
+-- String -> Number
+-- Asks the user the given question and gets the response of time in minutes
+on getUserTimeInput(theMessage)
+	display dialog theMessage default answer "" buttons {"Minutes", "Hours", "Cancel"} default button 1
+	set theResponse to {units:(the button returned of the result), amount:(the text returned of the result)}
+	if (units of theResponse) is "Hours" then
+		return ((amount of theResponse) * 60)
+	else
+		return (amount of theResponse)
+	end if
+end getUserTimeInput
+
+-- [List-of String] String String String -> String
+-- Given a list of strings, asks the user for a search term and shows the given list in terms of how
+-- close the words are with a repeated item
+on searchListRepeatedItem(lot, thePrompt, theTitle, theRepeatedItem)
+	display dialog "Input the search term" default answer ""
+	set theResult to the text returned of the result
+	set theList to orderListBySearch(theResult, lot)
+	chooseFromBigList(theList, thePrompt, theTitle, theRepeatedItem)
+end searchListRepeatedItem
+
+-- [List-of String] String String -> String
+-- Given a list of strings, asks the user for a search term and shows the given list in terms of how
+-- close the words are without a repeated item
+on searchListNoRepeatedItem(lot, thePrompt, theTitle)
+	display dialog "Input the search term" default answer ""
+	set theResult to the text returned of the result
+	set theList to orderListBySearch(theResult, lot)
+	chooseFromBigListNoRepeat(theList, thePrompt, theTitle)
+end searchListNoRepeatedItem
+
+-- String [List-of String] -> [List-of String]
+-- Puts the list in order of how they match with the given string
+on orderListBySearch(theString, theList)
+	set theNewList to {}
+	repeat with i from 1 to (count of theList)
+		set theItem to getMatchScore(theString, (item i of theList))
+		set theNewList to insertMatchScore(theItem, theNewList)
+	end repeat
+	set theFinalList to {}
+	repeat with i from 1 to (count of theNewList)
+		set theItem to (theWord of item i of theNewList)
+		set theFinalList to {theItem} & theFinalList
+	end repeat
+	return theFinalList
+end orderListBySearch
+
+-- String String -> {theWord: String, theMatch: num}
+-- Generates a data structure with the second given word and the match score with the first given word
+on getMatchScore(term, theString)
+	set theCount to count of (characters of term)
+	if (count of theString) < theCount then
+		set theCount to count of (characters of theString)
+	end if
+	set score to 0
+	repeat with i from 1 to theCount
+		if (item i of term) = (item i of theString) then
+			set score to score + 1
+		end if
+	end repeat
+	return {theWord:theString, theMatch:score}
+end getMatchScore
+
+-- MatchScore [List-of MatchScore] -> [List-of MatchScore]
+-- Inserts the given matchscore in the correct place in the list
+on insertMatchScore(match, theList)
+	if (count of theList) > 0 then
+		if (theMatch of match) < (theMatch of (item 1 of theList)) then
+			return {match} & theList
+		else
+			if (count of theList) > 1 then
+				return {(item 1 of theList)} & insertMatchScore(match, (items 2 thru (count of theList) of theList))
+			else
+				return theList & {match}
+			end if
+		end if
+	else
+		return {match}
+	end if
+end insertMatchScore
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Setting the global variables
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic functions that help work with work with numbers
+
+-- String String String String String -> String
+-- Gets the column letter of the given column header in the given table in the given sheet in the given document at the given file path
+on getColumnLetter(theFilePath, theDocument, theSheet, theTable, columnName)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					set theNumber to address of column columnName
+				end tell
+			end tell
+		end tell
+	end tell
+	set theList to {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
+	return item theNumber of theList
+end getColumnLetter
+
+-- String String String -> String
+-- Gets the column letter of the given column header in the given table of the given sheet of the reminders app file
+on getRemindersAppColumnLetter(theSheet, theTable, theColumnName)
+	getColumnLetter("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theColumnName)
+end getRemindersAppColumnLetter
+
+-- String -> String
+-- Gets the column letter corresponding the given column name in the assignments table of the reminders app document
+on getAssignmentsColumnLetter(columnName)
+	getRemindersAppColumnLetter("Assignments", "Assignments", columnName)
+end getAssignmentsColumnLetter
+
+-- String -> String
+-- Gets the column letter corresponding to the given column name in the work types table of the reminders app
+on getWorkTypeColumnLetter(columnName)
+	getRemindersAppColumnLetter("Type of Work", "Type of Work", columnName)
+end getWorkTypeColumnLetter
+
+-- String -> String
+-- Gets the column letter corresponding to the given column name in the incomplete homework reminders table of the reminders app file
+on getIncompleteColumnLetter(columnName)
+	getRemindersAppColumnLetter("Homework Reminders", "Incomplete Homework Reminders", columnName)
+end getIncompleteColumnLetter
+
+-- String -> String
+-- Gets the column letter corresponding to the given column name in the complete homework reminders table of the reminders app file
+on getCompleteColumnLetter(columnName)
+	getRemindersAppColumnLetter("Homework Reminders", "Completed Homework Reminders", columnName)
+end getCompleteColumnLetter
+
+-- Date -> String
+-- Gets the column letter corresponding to the given column name in the cumulative work table in the updates sheet
+on getCumulativeWorkColumnLetter(theColumn)
+	getRemindersAppColumnLetter("Updates", "Cumulative Work", theColumn)
+end getCumulativeWorkColumnLetter
+
+-- String -> String
+-- Gets the column letter of the column with the given header in the assignments table
+on getAssignmentColumnLetter(theColumn)
+	getRemindersAppColumnLetter("Assignments", "Assignments", theColumn)
+end getAssignmentColumnLetter
+
+-- String String String String -> Number
+-- Gets the row count of the given table in the given documnet of the given sheet
+on getCount(theFilePath, theDocument, theSheet, theTable)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					get row count
+				end tell
+			end tell
+		end tell
+	end tell
+end getCount
+
+-- String String -> Number
+-- Gets the count of the given table in the given sheet in the document for the reminders app
+on getCountReminderApp(theSheet, theTable)
+	getCount("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable)
+end getCountReminderApp
+
+-- Nil -> Number
+-- Gets the count of the incomplete homework reminders table
+on getIncompleteCount()
+	getCountReminderApp("Homework Reminders", "Incomplete Homework Reminders")
+end getIncompleteCount
+
+-- Nil -> Number
+-- Gets the count of the complete homework reminders table
+on getCompleteCount()
+	getCountReminderApp("Homework Reminders", "Completed Homework Reminders")
+end getCompleteCount
+
+-- Nil -> Number
+-- Gets the count of the assignments table
+on getAssignmentsCount()
+	getCountReminderApp("Assignments", "Assignments")
+end getAssignmentsCount
+
+-- Nil -> Number
+-- Gets the count of the work types table
+on getWorkTypeCount()
+	getCountReminderApp("Type of Work", "Type of Work")
+end getWorkTypeCount
+
+-- Nil -> Number
+-- Gets the count of the cumulative work table in the updates sheet
+on getCumulativeWorkCount()
+	getCountReminderApp("Updates", "Cumulative Work")
+end getCumulativeWorkCount
+
+-- String String String String -> Nil
+-- Makes a new row in the given table in the given sheet in the given document at the given file path
+on makeNewRow(theFilePath, theDocument, theSheet, theTable)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					make new row
+				end tell
+			end tell
+		end tell
+	end tell
+end makeNewRow
+
+-- String String -> Nil
+-- Makes a new row in the Reminder app document in the given table in the given sheet
+on makeNewReminderAppRow(theSheet, theTable)
+	makeNewRow("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable)
+end makeNewReminderAppRow
+
+-- Nil -> Nil
+-- Creates a new row in the incomplete table of the reminders app file
+on makeNewIncompleteRow()
+	makeNewReminderAppRow("Homework Reminders", "Incomplete Homework Reminders")
+end makeNewIncompleteRow
+
+-- Nil -> Nil
+-- Creates a new row in the complete table of the reminder app file
+on makeNewCompleteRow()
+	makeNewReminderAppRow("Homework Reminders", "Completed Homework Reminders")
+end makeNewCompleteRow
+
+-- Nil -> Nil
+-- Creates a new row in the assignment table of the reminder app file
+on makeNewAssignmentRow()
+	makeNewReminderAppRow("Assignments", "Assignments")
+end makeNewAssignmentRow
+
+-- Nil -> Nil
+-- Creates a new row in the work type table of the reminders app file
+on makeNewWorkTypeRow()
+	makeNewReminderAppRow("Type of Work", "Type of Work")
+end makeNewWorkTypeRow
+
+-- Nil -> Nil
+-- Creates a new row in the cumulative work table in the sheet updates
+on makeNewCumulativeWorkRow()
+	makeNewReminderAppRow("Updates", "Cumulative Work")
+end makeNewCumulativeWorkRow
+
+-- String String String String Value callPath -> Nil
+-- Set the value of the given cell path to the given value
+on setValue(theFilePath, theDocument, theSheet, theTable, theCell, theValue)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					set the value of cell theCell to theValue
+				end tell
+			end tell
+		end tell
+	end tell
+end setValue
+
+-- String String Value CellPath -> Nil
+-- Sets the value of the given cell in the reminders app doucment in the given table in the given sheet to the given value
+on setRemindersAppValue(theSheet, theTable, theCell, theValue)
+	setValue("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theCell, theValue)
+end setRemindersAppValue
+
+-- Value CellPath -> Nil
+-- Set the value of the given cell in the incomplete reminders table to the given value
+on setIncompleteValue(theCell, theValue)
+	setRemindersAppValue("Homework Reminders", "Incomplete Homework Reminders", theCell, theValue)
+end setIncompleteValue
+
+-- Value CellPath -> Nil
+-- Set the value of the given cell in the complete reminders table to the given value
+on setCompleteValue(theCell, theValue)
+	setRemindersAppValue("Homework Reminders", "Completed Homework Reminders", theCell, theValue)
+end setCompleteValue
+
+-- Value CellPath -> Nil
+-- Set the value of the given cell in the assignments table to the given value
+on setAssignmentValue(theCell, theValue)
+	setRemindersAppValue("Assignments", "Assignments", theCell, theValue)
+end setAssignmentValue
+
+-- Value CellPath -> Nil
+-- Sets the value of the given cell in the assignments table to the given value
+on setWorkTypeValue(theCell, theValue)
+	setRemindersAppValue("Type of Work", "Type of Work", theCell, theValue)
+end setWorkTypeValue
+
+-- CellPath Value -> Nil
+-- Sets the value of the given cell in the cumulative work table in the updates sheet table to the given value
+on setCumulativeWorkValue(theCell, theValue)
+	setRemindersAppValue("Updates", "Cumulative Work", theCell, theValue)
+end setCumulativeWorkValue
+
+-- String String String String CellPath -> Value
+-- Gets the value of the given cell in the given table of the given sheet of the given document at the given file path
+on getValue(theFilePath, theDocument, theSheet, theTable, theCell)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					get the value of cell theCell
+				end tell
+			end tell
+		end tell
+	end tell
+end getValue
+
+-- String String CellPath -> Value
+-- Gets the value of the given cell in the given table of the given sheet in the reminders app file
+on getRemindersAppValue(theSheet, theTable, theCell)
+	getValue("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theCell)
+end getRemindersAppValue
+
+-- CellPath -> Value
+-- Gets the value of the given cell in the incomplete reminders table in the reminders app file
+on getIncompleteValue(theCell)
+	getRemindersAppValue("Homework Reminders", "Incomplete Homework Reminders", theCell)
+end getIncompleteValue
+
+-- CellPath -> Value
+-- Gets the value of the given cell in the complete reminders table in the reminders app file
+on getCompleteValue(theCell)
+	getRemindersAppValue("Homework Reminders", "Completed Homework Reminders", theCell)
+end getCompleteValue
+
+-- CellPath -> Value
+-- Gets the value of the given cell in the assignments table
+on getAssignmentValue(theCell)
+	getRemindersAppValue("Assignments", "Assignments", theCell)
+end getAssignmentValue
+
+-- CellPath -> Value
+-- Gets the value of the given cell in the work type table
+on getWorkTypeValue(theCell)
+	getRemindersAppValue("Type of Work", "Type of Work", theCell)
+end getWorkTypeValue
+
+-- CellPath -> Value
+-- Gets the value of the given cell in the cumulative work table in the updates sheet
+on getCumulativeWorkValue(theCell)
+	getRemindersAppValue("Updates", "Cumulative Work", theCell)
+end getCumulativeWorkValue
+
+-- String String String String Value -> Boolean
+-- Checks to see if there is a row header in the given table in the given sheet in the given documnet at the given file path that has the given value
+on rowExists(theFilePath, theDocument, theSheet, theTable, theValue)
+	set theCount to getCount(theFilePath, theDocument, theSheet, theTable)
+	repeat with i from 2 to theCount
+		if theValue is getValue(theFilePath, theDocument, theSheet, theTable, (("A" & i) as text)) then
+			return true
+		end if
+	end repeat
+	return false
+end rowExists
+-- String String Value -> Boolean
+-- Checks to see if there is a row header in the given table in the given sheet in the reminders app document
+on reminderAppRowExist(theSheet, theTable, theValue)
+	rowExists("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theValue)
+end reminderAppRowExist
+
+-- Value -> Boolean
+-- Checks to see if there is a row header in the Incomplete Homework Reminders table in the reminders app document that matches the given value
+on incompleteRowExist(theValue)
+	reminderAppRowExist("Homework Reminders", "Incomplete Homework Reminders", theValue)
+end incompleteRowExist
+
+-- Value -> Boolean
+-- Checks to see if tehre is a row header in the complet homework reminders table in the reminders app documnet that matches the given value
+on completeRowExist(theValue)
+	reminderAppRowExist("Homework Reminders", "Completed Homework Reminders", theValue)
+end completeRowExist
+
+-- Value -> Boolean
+-- Checks to see if there is a row header in the assignments table that matches the given value
+on assignmentsRowExist(theValue)
+	reminderAppRowExist("Assignments", "Assignments", theValue)
+end assignmentsRowExist
+
+-- Value -> Boolean
+-- Checks to see if there is a row header in the work type table that matches the given value
+on workTypeRowExist(theValue)
+	reminderAppRowExist("Type of Work", "Type of Work", theValue)
+end workTypeRowExist
+
+-- Date -> Boolean
+-- Checks to see if there is a row header in the cumulative work table in the updates sheet
+on cumulativeWorkRowExist(theDate)
+	set theCount to getCumulativeWorkCount()
+	repeat with i from 2 to theCount
+		getCumulativeWorkValue(i)
+		if (date string of getCumulativeWorkValue(("A" & i) as text)) = theDate then
+			return i
+		end if
+	end repeat
+	return false
+	reminderAppRowExist("Updates", "Cumulative Work", theDate)
+end cumulativeWorkRowExist
+
+-- String String String String String Boolean -> Nil
+-- Sorts the given table of the given sheet of the given document at the given file path by the given column either descending of ascending
+-- False is descending and True is ascending
+on sortColumn(theFilePath, theDocument, theSheet, theTable, theColumn, theDirection)
+	tell application "Numbers"
+		open theFilePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					if theDirection is true then
+						try
+							sort by (column theColumn) direction ascending
+						end try
+					else
+						try
+							sort by (column theColumn) direction descending
+						end try
+					end if
+				end tell
+			end tell
+		end tell
+	end tell
+end sortColumn
+
+-- String String String Boolean -> Nil
+-- Sorts the given table in the given sheet in the reminders app document by the given column either ascending or descending
+-- False is descending True is ascending
+on sortReminderAppColumn(theSheet, theTable, theColumn, theDirection)
+	sortColumn("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theColumn, theDirection)
+end sortReminderAppColumn
+
+-- Nil -> Nil
+-- Sorts the incpomplete table by reminder IDs
+on sortIncompleteReminderID()
+	sortReminderAppColumn("Homework Reminders", "Incomplete Homework Reminders", "Reminder ID", false)
+end sortIncompleteReminderID
+
+-- String String String -> Nil
+-- Sorts the given table in the given sheet in the reminders app in order of most recent to least recent if it is a date
+on sortMostRecent(theSheet, theTable, theColumn)
+	sortReminderAppColumn(theSheet, theTable, theColumn, false)
+end sortMostRecent
+
+-- Nil -> Nil
+-- Sorts the assignments by last used
+on sortAssignmentsMostRecent()
+	sortMostRecent("Assignments", "Assignments", "Last Used")
+end sortAssignmentsMostRecent
+
+-- Nil -> Nil
+-- Sorts the workTypes by the last used
+on sortWorkTypesMostRecent()
+	sortMostRecent("Type of Work", "Type of Work", "Last Used")
+end sortWorkTypesMostRecent
+
+-- Nil -> Nil
+-- Sorts the Cumulative Work Table in the updates sheet by the most recent
+on sortCumulativeWorkMostRecent()
+	sortMostRecent("Updates", "Cumulative Work", "A")
+end sortCumulativeWorkMostRecent
+
+-- Nil -> Nil
+-- Sort the incomplete homework reminders by most recent
+on sortIncompleteMostRecent()
+	sortMostRecent("Homework Reminders", "Incomplete Homework Reminders", "Due Date")
+end sortIncompleteMostRecent
+
+-- String String String String Number -> Nil
+-- Deletes the given row in the given table of the given sheet of the given document at the given file path
+on deleteRow(filePath, theDocument, theSheet, theTable, theRow)
+	tell application "Numbers"
+		open filePath
+		tell document theDocument
+			tell sheet theSheet
+				tell table theTable
+					delete row theRow
+				end tell
+			end tell
+		end tell
+	end tell
+end deleteRow
+
+-- String String Number -> Nil
+-- Deletes the given row in the given table of the given sheet in the reminders app document
+on deleteRemindersAppRow(theSheet, theTable, theRow)
+	deleteRow("/Users/Nick/Library/Mobile Documents/com~apple~Numbers/Documents/Spreadsheets for Scripts/Reminders App 3.0.numbers", "Reminders App 3.0", theSheet, theTable, theRow)
+end deleteRemindersAppRow
+
+-- Number -> Nil
+-- Deletes the given row in the Complete Homework Reminders table
+on deleteCompleteRow(theRow)
+	deleteRemindersAppRow("Homework Reminders", "Completed Homework Reminders", theRow)
+end deleteCompleteRow
+
+-- Number -> Nil
+-- Deletes the given row in the incomplete homework reminders table
+on deleteIncompleteRow(theRow)
+	deleteRemindersAppRow("Homework Reminders", "Incomplete Homework Reminders", theRow)
+end deleteIncompleteRow
+
+-- Number -> Number
+-- Given the reminder Number returns the Row Number
+on getRowNumber(reminderNumber)
+	set again to true
+	set i to 1
+	repeat until again is false
+		set i to i + 1
+		set theValue to getIncompleteValue(("A" & i) as text)
+		if theValue is reminderNumber then
+			set again to false
+		end if
+	end repeat
+	return i
+end getRowNumber
+
+-- Date -> Number
+-- Gets Cumulative Work row number
+on getCumulativeWorkRowNumber(theDate)
+	set again to true
+	set i to 1
+	repeat until again is false
+		set i to i + 1
+		set theValue to getCumulativeWorkValue(("A" & i) as text)
+		if theValue is theDate then
+			set again to false
+		end if
+	end repeat
+	return i
+end getCumulativeWorkRowNumber
+
+-- Nil -> Nil
+-- Saves all numbers documents and quits numbers
+on saveAndQuit()
+	tell application "Numbers"
+		repeat with i from 1 to (number of documents)
+			save document i
+		end repeat
+		quit
+	end tell
+end saveAndQuit
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Operations in the update sheet
+
+-- Date -> Number
+-- Returns the amount worked for the given date
+on getAmountWorkedDate(theDate)
+	try
+		set theDate to date string of (date theDate)
+	on error
+		set theDate to date string of theDate
+	end try
+	set theResult to cumulativeWorkRowExist(theDate)
+	if theResult is false then
+		return 0
+	end if
+	getCumulativeWorkValue((getCumulativeWorkColumnLetter("Amount Worked") & theResult) as text)
+end getAmountWorkedDate
+
+-- Date Number -> Nil
+-- Adds the amount worked to the current amount worked for the given date
+on updateAmountWorked(theDate, theAmount)
+	set theResult to cumulativeWorkRowExist(theDate)
+	if theResult is not false then
+		set rowNumber to theResult
+		set theCurrentAmount to getCumulativeWorkValue((getCumulativeWorkColumnLetter("Amount Worked") & rowNumber) as text)
+		setCumulativeWorkValue((getCumulativeWorkColumnLetter("Amount Worked") & rowNumber) as text, (theAmount + theCurrentAmount))
+	else
+		set theValue to getCumulativeWorkValue("A2")
+		if theValue as text is "missing value" then
+			addCumulativeWork(theDate, theAmount)
+		else
+			makeNewCumulativeWorkRow()
+			addCumulativeWork(theDate, theAmount)
+		end if
+	end if
+end updateAmountWorked
+
+-- Date Number
+-- Creates a new row with the given date and amount
+on addCumulativeWork(theDate, theAmount)
+	set theCount to getCumulativeWorkCount()
+	setCumulativeWorkValue(("A" & theCount) as text, theDate)
+	setCumulativeWorkValue((getCumulativeWorkColumnLetter("Amount Worked") & theCount) as text, theAmount)
+	sortCumulativeWorkMostRecent()
+end addCumulativeWork
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Operations on the assignments table
+
+-- String Date String -> Nil
+-- Inserts a new assignment into the assignments table in reminders app
+on inputAssignmentIntoNumbers(assignmentName, lastUsed, workType)
+	-- Check and see if there are more than two rows (if there are the last row is not empty)
+	set theCount to getAssignmentsCount()
+	if theCount = 2 then
+		-- Checks to see if the second row is empty (if it is, it will just put the assignment in that row
+		set theName to getAssignmentValue(("A" & 2) as text) as string
+		set theLastUsed to getAssignmentValue((getAssignmentsColumnLetter("Last Used") & 2) as text) as string
+		set theWorkType to getAssignmentValue((getAssignmentsColumnLetter("Work Type") & 2) as text) as string
+		if theName = "missing value" and theLastUsed = "missing value" and theWorkType = "missing value" then
+			setAssignmentValue(("A" & 2) as text, assignmentName)
+			setAssignmentValue((getAssignmentColumnLetter("Last Used") & 2) as text, lastUsed)
+			setAssignmentValue((getAssignmentColumnLetter("Work Type") & 2) as text, workType)
+		else
+			makeNewAssignmentRow()
+			setAssignmentValue(("A" & 3) as text, assignmentName)
+			setAssignmentValue((getAssignmentColumnLetter("Last Used") & 3) as text, lastUsed)
+			setAssignmentValue((getAssignmentColumnLetter("Work Type") & 3) as text, workType)
+		end if
+	else
+		makeNewAssignmentRow()
+		setAssignmentValue(("A" & (theCount + 1)) as text, assignmentName)
+		setAssignmentValue((getAssignmentColumnLetter("Last Used") & (theCount + 1)) as text, lastUsed)
+		setAssignmentValue((getAssignmentColumnLetter("Work Type") & (theCount + 1)) as text, workType)
+	end if
+	sortAssignmentsMostRecent()
+end inputAssignmentIntoNumbers
+
+-- String -> [Maybe assignment]
+-- Returns information about the assignment with the same name if there is one
+on getAssignmentInfo(theAssignmentName)
+	if assignmentsRowExist(theAssignmentName) then
+		set theLastUsed to getAssignmentValue(("Last Used " & theAssignmentName) as text)
+		set theWorkType to getAssignmentValue(("Work Type " & theAssignmentName) as text)
+		return makeAssignment(theAssignmentName, theLastUsed, theWorkType)
+	else
+		-- the assignment doesn't exist so return false
+		return false
+		
+	end if
+end getAssignmentInfo
+
+-- Nil -> [List-of String]
+-- Returns a list of all the assignments in the table
+on getAllAssignments()
+	set theValue to getAssignmentValue(("A" & 2) as text)
+	if theValue as text is "missing value" then
+		return {}
+	else
+		set theCount to getAssignmentsCount()
+		set theList to {}
+		repeat with i from 2 to theCount
+			set theValue to getAssignmentValue(("A" & i) as text)
+			set theList to {theValue} & theList
+		end repeat
+		return theList
+	end if
+end getAllAssignments
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Operations on the type of work table
+
+-- String Date -> Nil
+-- Input a work type into numbers
+on inputWorkTypeIntoNumbers(workTypeName, lastUsed)
+	-- Check and see if there are more than two rows (if there are the last row is not empty)
+	set theCount to getWorkTypeCount()
+	if theCount = 2 then
+		-- Checks to see if the second row is empty (if it is, it will just put the assignment in that row
+		set theName to getWorkTypeValue(("A" & 2) as text) as string
+		set theLastUsed to getWorkTypeValue((getWorkTypeColumnLetter("Last Used") & 2) as text) as string
+		if theName = "missing value" and theLastUsed = "missing value" then
+			setWorkTypeValue(("A" & 2) as text, workTypeName)
+			setWorkTypeValue((getWorkTypeColumnLetter("Last Used") & 2) as text, lastUsed)
+		else
+			makeNewWorkTypeRow()
+			setWorkTypeValue(("A" & 3) as text, workTypeName)
+			setWorkTypeValue((getWorkTypeColumnLetter("Last Used") & 3) as text, lastUsed)
+		end if
+	else
+		makeNewWorkTypeRow()
+		setWorkTypeValue(("A" & (theCount + 1)) as text, workTypeName)
+		setWorkTypeValue((getWorkTypeColumnLetter("Last Used") & (theCount + 1)) as text, lastUsed)
+	end if
+	sortWorkTypesMostRecent()
+end inputWorkTypeIntoNumbers
+
+-- String -> [Maybe workType]
+-- Returns the workType with the information from the given type name
+on getTypeInfo(theTypeName)
+	if workTypeRowExist(theTypeName) then
+		set theLastUsed to getWorkTypeValue(("Last Used " & theTypeName) as string)
+		makeWorkType(theTypeName, theLastUsed)
+	else
+		-- Returns false because there is no workType with that name
+		return false
+	end if
+end getTypeInfo
+
+-- Nil -> [List-of String]
+-- Returns a list of all the work types in the table
+on getAllWorkTypes()
+	set theValue to getWorkTypeValue(("A" & 2) as text)
+	if theValue as text is "missing value" then
+		return {}
+	else
+		set theCount to getWorkTypeCount()
+		set theList to {}
+		repeat with i from 2 to theCount
+			set theValue to getWorkTypeValue(("A" & i) as text)
+			set theList to {theValue} & theList
+		end repeat
+		return theList
+	end if
+end getAllWorkTypes
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Operations on the Complete Homework Reminders Table
+
+-- Number -> Nil
+-- Updates the reminder at the given row number in the completed table to incomplete
+on unfinishReminder(rowNumber)
+	setCompleteValue("FALSE", (getCompleteColumnLetter("Completed") & rowNumber) as text)
+end unfinishReminder
+
+-- Reminder -> Nil
+-- Inserts the information from the reminder into the completed homework reminders table in the reminders app
+on insertCompletedReminder(theReminder)
+	set reminderNumber to (reminderNumber of theReminder)
+	set reminderId to (reminderId of theReminder)
+	set theName to (reminderName of theReminder)
+	set theBody to (reminderBody of theReminder)
+	set completed to (completed of theReminder)
+	set theCompletionDate to (completionDate of theReminder)
+	set dueDate to (dueDate of theReminder)
+	set workType to (workType of theReminder)
+	set estimatedCompletionTime to (estimatedCompletionTime of theReminder)
+	set priority to (priority of theReminder)
+	set actualCompletionTime to (actualCompletionTime of theReminder)
+	set assignment to (assignment of theReminder)
+	-- Check to see if there are any reminders already in the table, if there are, creates a new row and updates those value, otherwise, it uses row 2
+	set theValue to (getCompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		set rowNumber to 2
+	else
+		makeNewCompleteRow()
+		set rowNumber to getCompleteCount()
+	end if
+	setCompleteValue(("A" & rowNumber) as text, reminderNumber)
+	setCompleteValue((getCompleteColumnLetter("Reminder ID") & rowNumber) as text, reminderId)
+	setCompleteValue((getCompleteColumnLetter("Name") & rowNumber) as text, theName)
+	setCompleteValue((getCompleteColumnLetter("Body") & rowNumber) as text, theBody)
+	setCompleteValue((getCompleteColumnLetter("Completed") & rowNumber) as text, completed)
+	setCompleteValue((getCompleteColumnLetter("Completion Date") & rowNumber) as text, theCompletionDate)
+	setCompleteValue((getCompleteColumnLetter("Due Date") & rowNumber) as text, dueDate)
+	setCompleteValue((getCompleteColumnLetter("Type of Work") & rowNumber) as text, workType)
+	setCompleteValue((getCompleteColumnLetter("Estimated Completion Time") & rowNumber) as text, estimatedCompletionTime)
+	setCompleteValue((getCompleteColumnLetter("Priority") & rowNumber) as text, priority)
+	setCompleteValue((getCompleteColumnLetter("Actual Completion Time") & rowNumber) as text, actualCompletionTime)
+	setCompleteValue((getCompleteColumnLetter("Assignment") & rowNumber) as text, assignment)
+end insertCompletedReminder
+
+-- Number -> Reminder
+-- Gets all the information for a reminder in the complete homework reminders table and puts it into a data structure
+on getIncompleteReminderInfo(rowNumber)
+	set theReminderNumber to getCompleteValue(("A" & rowNumber) as text)
+	set theReminderID to getCompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text)
+	set theName to getCompleteValue((getCompleteColumnLetter("Name") & rowNumber) as text)
+	set theBody to getCompleteValue((getCompleteColumnLetter("Body") & rowNumber) as text)
+	set theCompleted to getCompleteValue((getCompleteColumnLetter("Completed") & rowNumber) as text)
+	set theCompletionDate to getCompleteValue((getCompleteColumnLetter("Completion Date") & rowNumber) as text)
+	set theDueDate to getCompleteValue((getCompleteColumnLetter("Due Date") & rowNumber) as text)
+	set theWorkType to getCompleteValue((getCompleteColumnLetter("Type of Work") & rowNumber) as text)
+	set theEstimatedCompletionTime to getCompleteValue((getIncompleteColumnLetter("Estimated Completion Time") & rowNumber) as text)
+	set thePriority to getCompleteValue((getCompleteColumnLetter("Priority") & rowNumber) as text)
+	set theActualCompletionTime to getCompleteValue((getCompleteColumnLetter("Actual Completion Time") & rowNumber) as text)
+	set theAssignment to getCompleteValue((getCompleteColumnLetter("Assignment") & rowNumber) as text)
+	return makeReminder(theReminderNumber, theReminderID, theName, theBody, theCompleted, theCompletionDate, theDueDate, theWorkType, theEstimatedCompletionTime, thePriority, theActualCompletionTime, thePriority, theActualCompletionTime, theAssignment)
+end getIncompleteReminderInfo
+
+-- Nil -> [List-of Number]
+-- Gets a list of all the reminderNumbers in the complete homework reminders table
+on getCompleteReminderNumbers()
+	set theValue to (getCompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		return {}
+	else
+		set theCount to getCompleteCount()
+		set theList to {}
+		repeat with i from 2 to theCount
+			set theNumber to getCompleteValue(("A" & i) as text)
+			set theList to {theNumber} & theList
+		end repeat
+		return theList
+	end if
+end getCompleteReminderNumbers
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Operations on the Inomplete Homework Reminders Table
+
+-- Number -> Nil
+-- Updates the reminder at a given row number in the incomplete table to complete
+on markIncompleteAsComplete(rowNumber)
+	setIncompleteValue((getIncompleteColumnLetter("Completed") & rowNumber) as text, "TRUE")
+end markIncompleteAsComplete
+
+-- Number -> Reminder
+-- Gets all the information for a reminder in the incomplete homework reminders table and puts it into a data structure
+on getCompleteReminderInfo(rowNumber)
+	set theReminderNumber to getIncompleteValue(("A" & rowNumber) as text)
+	set theReminderID to getIncompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text)
+	set theName to getIncompleteValue((getIncompleteColumnLetter("Name") & rowNumber) as text)
+	set theBody to getIncompleteValue((getIncompleteColumnLetter("Body") & rowNumber) as text)
+	set theCompleted to getIncompleteValue((getIncompleteColumnLetter("Completed") & rowNumber) as text)
+	set theCompletionDate to getIncompleteValue((getIncompleteColumnLetter("Completion Date") & rowNumber) as text)
+	set theDueDate to getIncompleteValue((getIncompleteColumnLetter("Due Date") & rowNumber) as text)
+	set theWorkType to getIncompleteValue((getIncompleteColumnLetter("Type of Work") & rowNumber) as text)
+	set theEstimatedCompletionTime to getIncompleteValue((getIncompleteColumnLetter("Estimated Completion Time") & rowNumber) as text)
+	set thePriority to getIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text)
+	set theActualCompletionTime to getIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & rowNumber) as text)
+	set theAssignment to getIncompleteValue((getIncompleteColumnLetter("Assignment") & rowNumber) as text)
+	return makeReminder(theReminderNumber, theReminderID, theName, theBody, theCompleted, theCompletionDate, theDueDate, theWorkType, theEstimatedCompletionTime, thePriority, theActualCompletionTime, theAssignment)
+end getCompleteReminderInfo
+
+-- Reminder -> Nil
+-- Inserts the information from the reminder into the incompleted homework reminders table in the reminders app
+on insertIncompletedReminder(theReminder)
+	set reminderNumber to (reminderNumber of theReminder)
+	set reminderId to (reminderId of theReminder)
+	set theName to (reminderName of theReminder)
+	set theBody to (reminderBody of theReminder)
+	set completed to (completed of theReminder)
+	set theCompletionDate to (completionDate of theReminder)
+	set dueDate to (dueDate of theReminder)
+	set workType to (workType of theReminder)
+	set estimatedCompletionTime to (estimatedCompletionTime of theReminder)
+	set priority to (priority of theReminder)
+	set actualCompletionTime to (actualCompletion of theReminder)
+	set assignment to (assignment of theReminder)
+	-- Check to see if there are any reminders already in the table, if there are, creates a new row and updates those value, otherwise, it uses row 2
+	set theValue to (getIncompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		set rowNumber to 2
+	else
+		makeNewIncompleteRow()
+		set rowNumber to getIncompleteCount()
+	end if
+	setIncompleteValue(("A" & rowNumber) as text, reminderNumber)
+	setIncompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text, reminderId)
+	setIncompleteValue((getIncompleteColumnLetter("Name") & rowNumber) as text, theName)
+	setIncompleteValue((getIncompleteColumnLetter("Body") & rowNumber) as text, theBody)
+	setIncompleteValue((getIncompleteColumnLetter("Completed") & rowNumber) as text, completed)
+	setIncompleteValue((getIncompleteColumnLetter("Completion Date") & rowNumber) as text, theCompletionDate)
+	setIncompleteValue((getIncompleteColumnLetter("Due Date") & rowNumber) as text, dueDate)
+	setIncompleteValue((getIncompleteColumnLetter("Type of Work") & rowNumber) as text, workType)
+	setIncompleteValue((getIncompleteColumnLetter("Estimated Completion Time") & rowNumber) as text, estimatedCompletionTime)
+	setIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text, priority)
+	setIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & rowNumber) as text, actualCompletionTime)
+	setIncompleteValue((getIncompleteColumnLetter("Assignment") & rowNumber) as text, assignment)
+end insertIncompletedReminder
+
+-- Reminder -> Nill
+-- Inserts the information from a new reminder
+on insertNewIncompleteReminder(theReminder)
+	set theReminderNumber to (reminderNumber of theReminder)
+	set theReminderID to (reminderId of theReminder)
+	set theReminderName to (reminderName of theReminder)
+	set theReminderBody to (body of theReminder)
+	set thePriority to (priority of theReminder)
+	set theDueDate to (dueDate of theReminder)
+	set theWorkType to (typeOfWork of theReminder)
+	set theEstimatedCompletionTime to (estimatedCompletionTime of theReminder)
+	set theAssignment to (assignment of theReminder)
+	-- Check to see if there are any reminders already in the table, if there are, creates a new row and updates those value, otherwise, it uses row 2
+	set theValue to (getIncompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		set rowNumber to 2
+	else
+		makeNewIncompleteRow()
+		set rowNumber to getIncompleteCount()
+	end if
+	setIncompleteValue(("A" & rowNumber) as text, theReminderNumber)
+	setIncompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text, theReminderID)
+	setIncompleteValue((getIncompleteColumnLetter("Name") & rowNumber) as text, theReminderName)
+	setIncompleteValue((getIncompleteColumnLetter("Body") & rowNumber) as text, theReminderBody)
+	setIncompleteValue((getIncompleteColumnLetter("Completed") & rowNumber) as text, "FALSE")
+	setIncompleteValue((getIncompleteColumnLetter("Due Date") & rowNumber) as text, theDueDate)
+	setIncompleteValue((getIncompleteColumnLetter("Type of Work") & rowNumber) as text, theWorkType)
+	setIncompleteValue((getIncompleteColumnLetter("Estimated Completion Time") & rowNumber) as text, theEstimatedCompletionTime)
+	setIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text, thePriority)
+	setIncompleteValue((getIncompleteColumnLetter("Assignment") & rowNumber) as text, theAssignment)
+end insertNewIncompleteReminder
+
+-- NewReminder -> Nil
+-- Inserts new reminder into the incomplete homework reminders table
+on insertNewReminder(newReminder)
+	-- Check to see if there are any reminders already in the table, if there are, creates a new row and updates those value, otherwise, it uses row 2
+	set theValue to (getIncompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		set rowNumber to 2
+	else
+		makeNewIncompleteRow()
+		set rowNumber to getIncompleteCount()
+	end if
+	set reminderNumber to (reminderNumber of newReminder)
+	set reminderId to (reminderId of newReminder)
+	set theName to (reminderName of newReminder)
+	set theBody to (reminderBody of newReminder)
+	set dueDate to (dueDate of newReminder)
+	set workType to (workType of newReminder)
+	set estimatedCompletionTime to (estimatedCompletionTime of newReminder)
+	set assignment to (assignment of newReminder)
+	set thePriority to (priority of newReminder)
+	setIncompleteValue(("A" & rowNumber) as text, reminderNumber)
+	if reminderId is not "" then
+		setIncompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text, reminderId)
+	end if
+	setIncompleteValue((getIncompleteColumnLetter("Name") & rowNumber) as text, theName)
+	setIncompleteValue((getIncompleteColumnLetter("Body") & rowNumber) as text, theBody)
+	setIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text, thePriority)
+	setIncompleteValue((getIncompleteColumnLetter("Completed") & rowNumber) as text, "FALSE")
+	setIncompleteValue((getIncompleteColumnLetter("Due Date") & rowNumber) as text, dueDate)
+	setIncompleteValue((getIncompleteColumnLetter("Type of Work") & rowNumber) as text, workType)
+	setIncompleteValue((getIncompleteColumnLetter("Estimated Completion Time") & rowNumber) as text, estimatedCompletionTime)
+	setIncompleteValue((getIncompleteColumnLetter("Assignment") & rowNumber) as text, assignment)
+end insertNewReminder
+
+-- CompleteReminder -> Nil
+-- Marks a Reminder as complete in the incomplete table
+on markReminderCompleteNumbers(completeReminder)
+	set reminderId to (reminderId of completeReminder)
+	set completionDate to (completionDate of completeReminder)
+	set actualCompletionTime to (actualCompletionTime of completeReminder)
+	setIncompleteValue(("Completed " & reminderId) as text, "TRUE")
+	setIncompleteValue(("Completion Date " & reminderId) as text, completionDate)
+	setIncompleteValue(("Actual Completion Time " & reminderId) as text, actualCompletionTime)
+end markReminderCompleteNumbers
+
+-- Nil -> Nil
+-- Goes through each item in incomplete homework reminders list and updates the priority
+on updateIncompletePriority()
+	set theValue to (getIncompleteValue(("A" & 2) as text))
+	if theValue as text is not "missing value" then
+		set rowNumber to getIncompleteCount()
+		repeat with i from 2 to rowNumber
+			set theDueDate to getIncompleteValue((getIncompleteColumnLetter("Due Date") & i) as text)
+			set thePriority to getPriority(theDueDate)
+			setIncompleteValue((getIncompleteColumnLetter("Priority") & i) as text, thePriority)
+		end repeat
+	end if
+end updateIncompletePriority
+
+-- Number Date -> Nil
+-- Updates the date of the given reminder number to the given date and updates the priority
+on changeDueDate(reminderNumber, dueDate)
+	setIncompleteValue(("Due Date " & reminderNumber) as text, dueDate)
+	set thePriority to getPriority(dueDate)
+	setIncompleteValue(("Priority " & reminderNumber) as text)
+end changeDueDate
+
+-- Nil -> [List-of Number]
+-- Gets a list of all the reminderNumbers in the incomplete homework reminders table
+on getIncompleteReminderNumbers()
+	set theValue to (getIncompleteValue(("A" & 2) as text))
+	if theValue as text is "missing value" then
+		return {}
+	else
+		set theCount to getIncompleteCount()
+		set theList to {}
+		repeat with i from 2 to theCount
+			set theNumber to getIncompleteValue(("A" & i) as text)
+			set theList to {theNumber} & theList
+		end repeat
+		return theList
+	end if
+end getIncompleteReminderNumbers
+
+-- Nil -> {reminderNumbers: [List-of Number], reminderNames: [List-of String]}
+-- Returns a list of the names and reminder numbers in the incomplete table
+on getIncompleteReminders()
+	set theCount to getIncompleteCount()
+	set theList to {}
+	repeat with i from 2 to theCount
+		set theValue to getIncompleteValue(("A" & i) as text)
+		set theList to {theValue} & theList
+	end repeat
+	set theReminderNumber to  theList
+	set theList to {}
+	repeat with i from 2 to theCount
+		set theValue to getIncompleteValue((getIncompleteColumnLetter("Name") & i) as text)
+		set theList to {theValue} & theList
+	end repeat
+	set theReminderName to theList
+	return {reminderNumbers:theReminderNumber, reminderNames:theReminderName}
+end getIncompleteReminders
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic Homework Reminders Sheet Actions
+
+-- Nil -> Nil
+-- Transfers all complete reminders in the incomplete table into the complete table and then sorts the complete table by date
+on transferComplete()
+	set theCount to getIncompleteCount()
+	set again to true
+	set i to 2
+	repeat until again is false
+		set isCompleted to getIncompleteValue((getIncompleteColumnLetter("Completed") & i) as text)
+		if isCompleted is true then
+			-- Function that gets all the info for a complete reminder and stores it in a data structure
+			set theReminder to getCompleteReminderInfo(i)
+			-- Function that inputs a new reminders with all the information into the complete homework reminders table
+			insertCompletedReminder(theReminder)
+			-- Function that delete the row from the incomplete homework reminders table 
+			deleteIncompleteRow(i)
+			set theCount to theCount - 1
+		end if
+		if i = theCount then
+			set again to false
+		end if
+		set i to i + 1
+	end repeat
+end transferComplete
+
+-- Nil -> Nil
+-- Transfers all incomplete reminders in the complete table into the incomplete table and then sorts the incomplete table by date
+on transferIncomplete()
+	set theCount to getCompleteCount()
+	set i to 2
+	repeat (theCount - 1) times
+		set isCompleted to getCompleteValue((getCompleteColumnLetter("Completed") & 1) as text)
+		if isCompleted is false then
+			-- Function that gets all the info for an incomplete reminder and stores it in a data structure
+			set theReminder to getIncompleteReminderInfo(i)
+			-- Function that inputs a new reminder with all the information into the incomplete homework reminders table
+			insertIncompletedReminder(theReminder)
+			-- Function thatdeletes the row from the complete homework reminders table	
+			deleteCompleteRow(i)
+			set theCount to theCount - 1
+		end if
+		if i = theCount then
+			set again to false
+		end if
+		set i to i + 1
+	end repeat
+end transferIncomplete
+
+-- Nil -> Number
+-- Returns the highest reminder number
+on getHighestReminderNumber()
+	set part1 to getIncompleteReminderNumbers()
+	set part2 to getCompleteReminderNumbers()
+	getMax(part1 & part2)
+end getHighestReminderNumber
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+
+-- Basic New Reminder Functions
+
+(* 
+A newReminder is {
+	number reminderNumber
+	string reminderID
+	string reminderName
+	string body
+	number priority
+	date dueDate
+	string typeOfWork
+	number estimatedCompletionTime
+	string assignment
+}
+
+Where reminderNumber is the internal primary key for the reminder
+Where reminderID is the reminders app's primary key of the reminder
+Where reminderName is the title of the reminder
+Where body is the notes of the reminder
+Where dueDate is the date that the reminder is due
+Where typeOfWork is the category of work that the reminder falls under
+Where estimatedCompletionTime is the estimated number of minutes the user thinks it will take to complete the task
+Where assignment is the name of the assignment this task is for
+
+*)
+
+
+
+-- Number String String Date String Number String -> newReminder
+-- New Reminder Constructor
+on makeNewReminder(theReminderNumber, theReminderID, theName, theBody, thePriority, theDueDate, theTypeOfWork, theEstimatedCompletionTime, theAssignment)
+	return {reminderNumber:theReminderNumber, reminderId:theReminderID, reminderName:theName, body:theBody, priority:thePriority, dueDate:theDueDate, typeOfWork:theTypeOfWork, estimatedCompletionTime:theEstimatedCompletionTime, assignment:theAssignment}
+end makeNewReminder
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic Reminder Functions
+
+(*
+A Reminder {
+	number reminderNumber
+	string reminderID
+	string name
+	string body
+	boolean completed
+	date completionDate
+	date dueDate
+	string typeOfWork
+	number estimatedCompletionTime
+	number priority
+	number actualCompletionTime
+	string assignment
+}
+
+Where the reminderNumber is the primary key for the app
+Where the reminderID is the primary key for the reminder in the reminders app
+Where the name is the title of the reminder
+Where the body is the notes for the reminder
+Where the completed is whether or not the reminder has been completed
+Where the completionDate is the date on which the reminder was completed
+Where the dueDate is the date on which the reminder is due
+Where the typeOfWork is category of work that the reminders is categorized under
+Where the estimatedCompletionTime is the amount of time the reminders would take estimated by the user
+Where the priority is either 0, 4, 5, or 6 which is determined by the due date
+Where the actualCompletionTime is the amount of time it actually took to complete the reminder
+Where the assignment is the name of the assignment that this task was for
+
+*)
+
+
+-- Constructor
+-- Number String String String Boolean Date Date String Number Number Number String
+on makeReminder(theReminderNumber, theReminderID, theReminderName, theReminderBody, isCompleted, theCompletionDate, theDueDate, theWorkType, theEstimatedCompletionTime, thePriority, theActualCompletionTime, theAssignment)
+	return {reminderNumber:theReminderNumber, reminderId:theReminderID, reminderName:theReminderName, reminderBody:theReminderBody, completed:isCompleted, completionDate:theCompletionDate, dueDate:theDueDate, workType:theWorkType, estimatedCompletionTime:theEstimatedCompletionTime, priority:thePriority, actualCompletionTime:theActualCompletionTime, assignment:theAssignment}
+end makeReminder
+
+
+
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic workType functions
+
+-- Definition
+(* 
+workType{
+	string typeName
+	date lastUsed
+}
+
+Where the typeName is the name of the work type
+Where the lastUsed is the date that it was last used as a work type for a reminder
+
+*)
+
+-- Constructor
+on makeWorkType(theTypeName, theLastUsed)
+	return {typeName:theTypeName, lastUsed:theLastUsed}
+end makeWorkType
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic assignment functions
+
+--Definition
+(*
+assignment {
+	string assignmentName
+	date lastUsed
+	string workType
+}
+
+Where the assignmentName is the name of the assignment
+Where the lastUsed is the date that is was last used as an assignment
+Where the workType is the type of work that the assignment is categorized as
+
+*)
+
+-- Constructor
+on makeAssignment(theAssignmentName, theLastUsed, theWorkType)
+	return {assignmentName:theAssignmentName, lastUsed:theLastUsed, workType:theWorkType}
+end makeAssignment
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic CompleteReminder function
+
+-- Definition
+(*
+CompleteReminder{
+	number reminderNumber
+	date completionDate
+	number actualCompletionTime
+}
+
+Where the reminderNumber is the primary key for the table
+Where the completionDate is the date that the reminder was completed
+Where actualCompletionTime was the amount of time it took to complete the assignment
+
+*)
+
+-- Constructor
+on makeCompleteReminder(theReminderNumber, theCompletionDate, theActualCompletionTime)
+	return {reminderNumber:theReminderNumber, completionDate:theCompletionDate, actualCompletionTime:theActualCompletionTime}
+end makeCompleteReminder
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic Batch Entry functions
+on batchEntry()
+	-- Updates the priorities of all of the reminders in the incomplete reminders list
+	updatePriorities()
+	-- Goes through the list from bottom to top until there are reminder ids and if there is 
+	-- a reminder without an ID but with a priority > 0, it inputs it into reminders and adds
+	-- the reminder ID to the table
+	sortIncompleteReminderID
+	set rowNumber to getIncompleteCount()
+	set again to true
+	repeat until again is false
+		set theID to getIncompleteValue((getIncompleteColumnLetter("Reminder ID") & rowNumber) as text)
+		if theID as text is "missing value" then
+			set thePriority to getIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text)
+			if thePriority is not 0 then
+				set theName to getIncompleteValue((getIncompleteColumnLetter("Name") & rowNumber) as text)
+				set theBody to getIncompleteValue((getIncompleteColumnLetter("Body") & rowNumber) as text)
+				set thePriority to getIncompleteValue((getIncompleteColumnLetter("Priority") & rowNumber) as text)
+				newIncompleteReminderReminders(theName, theBody, thePriority)
+			end if
+		end if
+		set rowNumber to rowNumber - 1
+		if rowNumber = 1 then
+			set again to false
+		end if
+	end repeat
+	sortIncompleteMostRecent()
+end batchEntry
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Functions that involve getting user input
+
+-- Function to get users input for
+
+-- 1. New Reminder
+
+-- Nil -> NewReminder
+-- Asks the user for all of the information required to construct a new reminder
+on newReminderUserInput()
+	(*
+	number reminderNumber
+	string reminderID
+	string reminderName
+	string body
+	date dueDate
+	number priority
+	string typeOfWork
+	number estimatedCompletionTime
+	string assignment
+	*)
+	display dialog "What is the title of this reminder?" default answer ""
+	set theReminderName to the text returned of the result
+	display dialog "Are there any notes for this reminder?" buttons {"No", "Yes", "Cancel"} default button 1
+	set theResult to the button returned of the result
+	if theResult is "Yes" then
+		display dialog "What are the notes for this reminder?" default answer ""
+		set theBody to the text returned of the resutl
+	else
+		set theBody to ""
+	end if
+	display dialog "What is the due date for this reminder?" default answer ""
+	set tempDueDate to the text returned of the result
+	set theDueDate to understandDateString(tempDueDate)
+	set thePriority to getPriority(theDueDate)
+	set tempAssignment to chooseFromBigList(getAllAssignments(), "What assignment is this reminder for?", "Assignments", "New Assignment")
+	if tempAssignment is "New Assignment" then
+		display dialog "What is the name of this assignment?" default answer ""
+		set theAssignment to the text returned of the result
+		set tempWorkType to chooseFromBigList(getAllWorkTypes(), "What type of work is this?", "Work Types", "New Work Type")
+		if tempWorkType is "New Work Type" then
+			display dialog "What type of work is this?" default answer ""
+			set theWorkType to the text returned of the result
+		else
+			set theWorkType to tempWorkType
+		end if
+	else
+		set theAssignment to tempAssignment
+		set theWorkType to (workType of getAssignmentInfo(theAssignment))
+	end if
+	set theEstimatedCompletionTime to getUserTimeInput("How long will this assignment take you?")
+	set theReminderNumber to getHighestReminderNumber() + 1
+	if thePriority > 0 then
+		set theReminderID to newIncompleteReminderReminders(theReminderName, theBody, thePriority)
+	else
+		set theReminderID to ""
+	end if
+	set theReminder to makeNewReminder(theReminderNumber, theReminderID, theReminderName, theBody, thePriority, theDueDate, theWorkType, theEstimatedCompletionTime, theAssignment)
+	inputAssignmentIntoNumbers(theAssignment, (date string of (current date)), theWorkType)
+	inputWorkTypeIntoNumbers(theWorkType, (date string of (current date)))
+	insertNewIncompleteReminder(theReminder)
+	sortIncompleteMostRecent()
+end newReminderUserInput
+
+-- 2. Delete Reminder
+-- Nil -> Nil
+-- Deletes the reminder that the user chooses
+on deleteReminder()
+	set theThing to getIncompleteReminders()
+	chooseFromBigListNoRepeat((reminderNames of theThing), "Which reminder would you like to delete?", "Reminders")
+	set theResult to the result
+	if theResult is false then return false
+	set theNumber to (item (getItemNumber(theResult, (reminderNames of theThing))) of (reminderNumbers of theThing))
+	set theRowNumber to getRowNumber(theNumber)
+	set theID to getIncompleteValue((getIncompleteColumnLetter("Reminder ID") & theRowNumber) as text)
+	deleteIncompleteRow(getRowNumber(theNumber))
+	removeReminderReminders(theID)
+	sortIncompleteMostRecent()
+end deleteReminder
+
+-- 3. Update Reminder Due Date
+-- Nil -> Nil
+-- Based on the user's input, updates the due date for the reminder
+on updateReminderDueDate()
+	set theThing to getIncompleteReminders()
+	chooseFromBigListNoRepeat((reminderNames of theThing), "Which reminder would you like to change the due date of?", "Reminders")
+	set theResult to the result
+	set theNumber to (item (getItemNumber(theResult, (reminderNames of theThing))) of (reminderNumbers of theThing))
+	display dialog "What would you like to change the date to?" default answer ""
+	set tempDate to the text returned of the result
+	set theDate to understandDateString(tempDate)
+	set theRowNumber to getRowNumber(theNumber)
+	setIncompleteValue((getIncompleteColumnLetter("Due Date") & theRowNumber) as text, theDate)
+	sortIncompleteMostRecent()
+end updateReminderDueDate
+
+-- 4. Work on Reminder
+
+-- Nil -> Nil
+-- Updates the amount of work that the reminder has been worked on and update the cummulative for the day
+on workOnReminder()
+	set theThing to getIncompleteReminders()
+	chooseFromBigListNoRepeat((reminderNames of theThing), "Which reminder did you work on?", "Reminders")
+	set theResult to the result
+	set theNumber to (item (getItemNumber(theResult, (reminderNames of theThing))) of (reminderNumbers of theThing))
+	set theRowNumber to getRowNumber(theNumber)
+	set theAmountWorkedNow to getUserTimeInput("How long did you work on this assignment?")
+	set theAmountWorkedBefore to getIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & theRowNumber) as text)
+	if theAmountWorkedBefore as text is "missing value" then
+		set theAmountWorkedBefore to 0
+	end if
+	set theAmountWorked to theAmountWorkedNow + theAmountWorkedBefore
+	setIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & theRowNumber) as text, theAmountWorked)
+	display dialog "When did you work on this reminder?" default answer ""
+	set theTempDate to the text returned of the result
+	set theDate to understandDateString(theTempDate)
+	set theOtherDate to getIncompleteValue((getIncompleteColumnLetter("Completion Date") & theRowNumber) as text)
+	if theDate < theOtherDate then
+		set theDate to theOtherDate
+	end if
+	setIncompleteValue((getIncompleteColumnLetter("Completion Date") & theRowNumber) as text, theDate)
+	updateAmountWorked(theDate, theAmountWorkedNow)
+	sortIncompleteMostRecent()
+end workOnReminder
+
+-- 5. Complete a reminder
+-- Nil -> Nil
+-- Changes the completed value to true, updates completion time, updates the completion date runs the script that switches it to the other table,
+on completeReminder()
+	set theThing to getIncompleteReminders()
+	chooseFromBigListNoRepeat((reminderNames of theThing), "Which reminder did you complete?", "Reminders")
+	set theResult to the result
+	set theNumber to (item (getItemNumber(theResult, (reminderNames of theThing))) of (reminderNumbers of theThing))
+	set theRowNumber to getRowNumber(theNumber)
+	set theAmountWorkedNow to getUserTimeInput("How long did it take you to complete this assignment?")
+	set theAmountWorkedBefore to getIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & theRowNumber) as text)
+	if theAmountWorkedBefore as text is "missing value" then
+		set theAmountWorkedBefore to 0
+	end if
+	set theAmountWorked to theAmountWorkedNow + theAmountWorkedBefore
+	setIncompleteValue((getIncompleteColumnLetter("Actual Completion Time") & theRowNumber) as text, theAmountWorked)
+	display dialog "When did you complete this reminder?" default answer ""
+	set theTempDate to the text returned of the result
+	set theDate to understandDateString(theTempDate)
+	set theOtherDate to getIncompleteValue((getIncompleteColumnLetter("Completion Date") & theRowNumber) as text)
+	if theDate < theOtherDate then
+		set theDate to (date string of theOtherDate)
+	end if
+	setIncompleteValue((getIncompleteColumnLetter("Completion Date") & theRowNumber) as text, theDate)
+	updateAmountWorked(theDate, theAmountWorkedNow)
+	setIncompleteValue((getIncompleteColumnLetter("Completed") & theRowNumber) as text, "TRUE")
+	set reminderId to getIncompleteValue((getIncompleteColumnLetter("Reminder ID") & theRowNumber) as text)
+	transferComplete()
+	markReminderCompleteReminders(reminderId)
+	sortIncompleteMostRecent()
+end completeReminder
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Functions that Interact with the reminders app
+
+-- String Number -> Nil
+-- Update the priority of a reminder in the reminders app
+on updateReminderPriorityReminders(theID, thePriority)
+	tell application "Reminders"
+		set priority of reminder id theID to thePriority
+	end tell
+end updateReminderPriorityReminders
+
+-- String String Number Boolean -> String
+-- Insert a new reminder into the reminders app with the given name, body, priority, and completed and returns the ID
+on insertNewReminderReminders(theName, theBody, thePriority, theCompleted)
+	tell application "Reminders"
+		set theReminder to make new reminder in list "Homework" with properties {name:theName, completed:theCompleted, priority:thePriority, body:theBody}
+		set theID to id of theReminder
+	end tell
+	return theID
+end insertNewReminderReminders
+
+-- String String Number -> String
+-- Inserts a new incompleted reminder with the given name, body and, priority
+on newIncompleteReminderReminders(theName, theBody, thePriority)
+	insertNewReminderReminders(theName, theBody, thePriority, false)
+end newIncompleteReminderReminders
+
+-- String String Number -> String
+-- Inserts a new complete reminder with the given name, body, and priority
+on newCompleteReminderReminders(theName, theBody, thePriority)
+	insertNewReminderReminders(theName, theBody, thePriority, true)
+end newCompleteReminderReminders
+
+-- String -> Nil
+-- Removes a reminder from the reminders app
+on removeReminderReminders(theID)
+	tell application "Reminders"
+		delete reminder id theID
+	end tell
+end removeReminderReminders
+
+-- String -> Nil
+-- Marks a reminder as completed
+on markReminderCompleteReminders(theID)
+	tell application "Reminders"
+		set completed of reminder id theID to true
+	end tell
+end markReminderCompleteReminders
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+--Basic Priority Functions
+
+(*
+	!: 7-9 days
+	!!: 2-6 days
+	!!!: 1 day
+	No Priority: >9
+*)
+
+-- Date -> Number
+-- Gets the priority given the due date of the reminder
+on getPriority(theDate)
+	set theDayDifference to dayDifference(theDate)
+	if theDayDifference > 9 then
+		return 0
+	else if theDayDifference > 6 then
+		return 6
+	else if theDayDifference ≥ 1 then
+		return 5
+	else
+		return 4
+	end if
+end getPriority
+
+
+-- Nil -> Nil
+-- Updates the priorities of incomplete reminders in numbers and reminders
+on updatePriorities()
+	updateIncompletePriority()
+	set theCount to getIncompleteCount()
+	repeat with i from 2 to theCount
+		set theID to getIncompleteValue((getIncompleteColumnLetter("Reminder ID") & i) as text)
+		if theID as text is "missing value" then
+			set thePriority to getIncompleteValue((getIncompleteColumnLetter("Priority") & i) as text)
+			if thePriority > 0 then
+				set theName to getIncompleteValue((getIncompleteColumnLetter("Name") & i) as text)
+				set theBody to getIncompleteValue((getIncompleteColumnLetter("Body") & i) as text)
+				if theBody as text is "missing value" then
+					set theBody to ""
+				end if
+				set theID to newIncompleteReminderReminders(theName, theBody, thePriority)
+				setIncompleteValue((getIncompleteColumnLetter("Reminder ID") & i) as text, theID)
+			end if
+		else
+			set thePriority to getIncompleteValue((getIncompleteColumnLetter("Priority") & i) as text)
+			updateReminderPriorityReminders(theID, thePriority)
+		end if
+	end repeat
+end updatePriorities
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Basic functions handling dates
+
+-- Date -> String
+-- Formats the date into dd/mm/yyyy
+on dateFormat(theDate)
+	set y to year of theDate
+	set m to month of theDate as number
+	set d to day of theDate
+	return m & "/" & d & "/" & y
+end dateFormat
+
+-- Date -> Number
+-- Finding the difference between a date and the current date
+on dayDifference(theDate)
+	try
+		set theDate to date theDate
+	end try
+	(round ((theDate - (current date)) / (24 * 60 * 60) + 0.5))
+end dayDifference
+
+-- String -> Date
+-- Takes a string and produces that day the week after the current date
+on nextDay(theString)
+	set i to 0
+	set theDay to ((current date) + (i * days))
+	repeat until (weekday of theDay as string) is (theString as string)
+		set i to i + 1
+		set theDay to ((current date) + (i * days))
+	end repeat
+	return date string of theDay
+end nextDay
+
+-- String -> Date
+-- Gets the date that the string is trying to convey
+on understandDateString(theResponse)
+	if theResponse is "Today" then
+		return date string of (current date)
+	else if theResponse is "Tomorrow" then
+		return date string of ((current date) + (1 * days))
+	else if theResponse is "Yesterday" then
+		return (date string of ((current date) - (1 * days)))
+	else if (items 1 thru 4 of (characters of theResponse) as string) is "Next" then
+		set theResponse to (characters of theResponse)
+		set theDay to items 6 thru (count of theResponse) of theResponse
+		return nextDay(theDay)
+	else
+		return date string of (date theResponse)
+	end if
+end understandDateString
+
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Main Function
+
+-- Nil -> Nil
+-- Lets the user choose from a list of the functions available
+on main()
+	set again to true
+	repeat until again is false
+		choose from list {"New Reminder", "Complete Reminder", "Get Efficiency", "Update Reminders", "Work on Reminder", "Delete Reminder", "Update Reminder Due Date"} with prompt "What would you like to do?" with title "Reminders App" default items "New Reminder"
+		set theResult to the result as text
+		if theResult is "New Reminder" then
+			newReminderUserInput()
+		else if theResult is "Complete Reminder" then
+			completeReminder()
+		else if theResult is "Work on Reminder" then
+			workOnReminder()
+		else if theResult is "Delete Reminder" then
+			deleteReminder()
+		else if theResult is "Update Reminder Due Date" then
+			updateReminderDueDate()
+		else if theResult is "Batch Entry" then
+			batchEntry()
+		else if theResult is "Get Efficiency" then
+			display dialog getUserEfficiency()
+		else if theResult is "Update Reminders" then
+			updatePriorities()
+		end if
+		display dialog "Would you like to do more?" buttons {"Yes", "No", "Cancel"} default button 1
+		set theResponse to the button returned of the result
+		if theResponse is "No" then set again to false
+	end repeat
+	saveAndQuit()
+end main
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- All the calendar and checking efficiency functions
+
+-- Nil -> Number
+-- Gets the number of hours the user has worked today
+on getAmountWorkedToday()
+	getAmountWorkedDate((current date))
+end getAmountWorkedToday
+
+-- Tested and works
+-- Nil -> [List-if Events]
+-- Gets all calendar events for the current date
+on getTodaysEvents()
+	set y to (year of (current date))
+	set m to (month of (current date)) as number
+	set d to (day of (current date))
+	set currentDateStart to date ((m & "/" & d & "/" & y & " 12:00AM") as string)
+	set theNextDay to (currentDateStart + (1 * days))
+	tell application "Calendar"
+		tell calendar "Classes"
+			set theEvents to every event whose start date is greater than or equal to currentDateStart and end date is less than theNextDay
+		end tell
+	end tell
+	return theEvents
+end getTodaysEvents
+
+-- A TimeWindow is {eventStart: Date, eventEnd: Date}
+
+-- Tested and Works
+-- Event -> TimeWindow
+-- Gets the time window of the even
+on getTimeWindow(theEvent)
+	tell application "Calendar"
+		set startDate to start date of theEvent
+		set endDate to end date of theEvent
+		return {eventStart:startDate, eventEnd:endDate}
+	end tell
+end getTimeWindow
+
+-- Tested and Works, returns the time windows in the order of creation
+-- [List-of Events] -> [List-of TimeWindow]
+-- Gets a list of all the occupied time windows of the current date
+on getTimeWindows(theEvents)
+	set theList to {}
+	repeat until (count of theEvents) is 0
+		set theTimeWindow to getTimeWindow(item (count of theEvents) of theEvents)
+		set theList to {theTimeWindow} & theList
+		if (count of theEvents) is 1 then
+			set theEvents to {}
+		else
+			set theEvents to items 1 thru ((count of theEvents) - 1) of theEvents
+		end if
+	end repeat
+	return theList
+end getTimeWindows
+
+-- TimeWindowAndDuration is {eventStart: Date, eventEnd: Date, duration: Number}
+
+-- TimeWindow TimeWindow -> TimeWindowAndDuration
+-- Makes a Timewindow that is the end of the first time window and the start of the second
+on getTimeWindowDifference(t1, t2)
+	set theStart to (eventEnd of t1)
+	set theEnd to (eventStart of t2)
+	set theDifference to ((theEnd - theStart) / (60))
+	if theDifference > 30 then
+		return {eventStart:theStart, eventEnd:theEnd, duration:theDifference}
+	else
+		return {}
+	end if
+end getTimeWindowDifference
+
+-- [List-of TimeWindows] -> boolean
+-- Determines whether they are in order by the start date
+on areTimeWindowsSorted(timeWindows)
+	if (count of timeWindows) = 1 then
+		return true
+	else
+		if (eventStart of (item 1 of timeWindows)) < (eventStart of (item 2 of timeWindows)) then
+			if (count of timeWindows) = 2 then
+				return true
+			else
+				set timeWindows to items 2 thru (count of timeWindows) of timeWindows
+				areTimeWindowsSorted(timeWindows)
+			end if
+		else
+			return false
+		end if
+	end if
+end areTimeWindowsSorted
+
+-- Tested and Works
+-- TimeWindow TimeWindow -> Boolean
+-- Determines whether the first TimeWindow starts before the second
+on inOrder(t1, t2)
+	set theStart1 to (eventStart of t1)
+	set theStart2 to (eventStart of t2)
+	return theStart1 < theStart2
+end inOrder
+
+-- Tested and Works
+--[List-of TimeWindows] -> [List-of TimeWindows]
+-- Sorts the TimeWindows based on the start time with insertion sort
+on sortTimeWindows(timeWindows)
+	set theSortedList to {}
+	repeat until (count of timeWindows) is 0
+		set theSortedList to insertTimeWindow((item 1 of timeWindows), theSortedList)
+		if (count of timeWindows) > 1 then
+			set timeWindows to (items 2 through (count of timeWindows) of timeWindows)
+		else
+			set timeWindows to {}
+		end if
+	end repeat
+	return theSortedList
+end sortTimeWindows
+
+-- Tested and works
+--[TimeWindow] [List-of TimeWindow] -> [List-of TimeWindow]
+-- Inserts the time window into the correct spot in the given list based on start time
+on insertTimeWindow(t, timeWindows)
+	if (count of timeWindows) > 0 then
+		if (eventStart of t) > (eventStart of (item 1 of timeWindows)) then
+			if (count of timeWindows) > 1 then
+				return {(item 1 of timeWindows)} & (insertTimeWindow(t, (items 2 thru (count of timeWindows) of timeWindows)))
+			else
+				return timeWindows & {t}
+			end if
+		else
+			return {t} & timeWindows
+		end if
+	else
+		return {t}
+	end if
+end insertTimeWindow
+
+-- Tested and Works
+-- [List-of TimeWindow] -> [List-of TimeWindowDuration]
+-- Makes timewindows and durations of free time in the day
+on getFreeTimeWindows(timeWindows)
+	if (count of timeWindows) = 0 then
+		set theStart to date (((date string of (current date)) & " 10:00AM") as text)
+		set theEnd to date (((date string of (current date)) & " 11:59PM") as text)
+		set theDifference to ((theEnd - theStart) / 60)
+		set theList to {{startTime:theStart, endTime:theEnd, duration:theDifference}}
+	else
+		set timeWindows to sortTimeWindows(timeWindows)
+		if (eventStart of (item 1 of timeWindows)) > date (((date string of (current date)) & " 10:00AM") as text) then
+			set theStart to date (((date string of (current date)) & " 10:00AM") as text)
+			set theEnd to (eventStart of (item 1 of timeWindows))
+			set theDifference to ((theEnd - theStart) / 60)
+			set theList to {{eventStart:theStart, eventEnd:theEnd, duration:theDifference}}
+		else
+			set theList to {}
+		end if
+		repeat until (count of timeWindows) = 1
+			set t1 to (item 1 of timeWindows)
+			set t2 to (item 2 of timeWindows)
+			set timeDifferenceWindow to getTimeWindowDifference(t1, t2)
+			if timeDifferenceWindow is {} then
+				
+			else
+				set theList to theList & {timeDifferenceWindow}
+			end if
+			set timeWindows to items 2 thru (count of timeWindows) of timeWindows
+		end repeat
+		set theStart to (eventEnd of (item 1 of timeWindows))
+		set theEnd to date (((date string of (current date)) & " 11:59PM") as text)
+		set theDifference to round (((theEnd - theStart) / 60))
+		set theList to theList & {{eventStart:theStart, eventEnd:theEnd, duration:theDifference}}
+	end if
+	return theList
+end getFreeTimeWindows
+
+-- Tested and Works
+-- Nil -> [List-of TimeWindowDuration]
+-- Gets the free time for the current date
+on getTodayFreeTime()
+	return getFreeTimeWindows(getTimeWindows(getTodaysEvents()))
+end getTodayFreeTime
+
+-- Tested and Works
+-- [List-of TimeWindowDuration] -> Number
+-- Calculates the amount of free minutes in a day
+on todayAmountFreeTime(theTimeWindowDurations)
+	-- Accounts for 15 minutes of transition for each free time window
+	set transitionTime to (count of theTimeWindowDurations) * 15
+	set theTotal to 0
+	repeat until (count of theTimeWindowDurations) = 0
+		set theTotal to theTotal + (duration of (item 1 of theTimeWindowDurations))
+		if (count of theTimeWindowDurations) = 1 then
+			set theTimeWindowDurations to {}
+		else
+			set theTimeWindowDurations to (items 2 thru (count of theTimeWindowDurations) of theTimeWindowDurations)
+		end if
+	end repeat
+	-- Accounts for an hour and a half of eating time
+	set theTotal to theTotal - 90 - transitionTime
+	return theTotal
+end todayAmountFreeTime
+
+-- Nil -> Number
+-- Determines the amount of free time in a day after the free time threshold
+on getFreeTimeAfterThreshold()
+	set dayOfWeek to (weekday of (current date)) as string
+	set freeTime to todayAmountFreeTime(getTodayFreeTime())
+	if dayOfWeek is "Friday" then
+		set efficiencyThreshold to 0.55
+	else if dayOfWeek is "Saturday" or dayOfWeek is "Sunday" then
+		set efficiencyThreshold to 0.55
+	else
+		set efficiencyThreshold to 0.9
+	end if
+	set freeTimeAfterThreshold to (round (efficiencyThreshold * freeTime * 10)) / 10
+	return freeTimeAfterThreshold
+end getFreeTimeAfterThreshold
+
+-- Nil -> Number
+-- Gets the amount of free time so far in the day
+on getFreeTimeSoFar()
+	todayAmountFreeTime(getFreeTimeWindowsSoFar(getTodayFreeTime()))
+end getFreeTimeSoFar
+
+-- Number -> String
+-- Giving a value of minutes, converts it into a string in the format x hours and x minutes
+on minutesToString(min)
+	set theHours to round (min / 60 - 0.5)
+	set theMinutes to round (min - (theHours * 60))
+	set theMessage to (theHours & " hours and " & theMinutes & " minutes") as text
+end minutesToString
+
+-- Nil -> String
+-- Gets the efficiency of the day based on how many hours worked
+on getUserEfficiency()
+	set freeTime to getFreeTimeAfterThreshold()
+	set amountWorkedToday to getAmountWorkedToday()
+	set freeTimeSoFar to getFreeTimeSoFar()
+	set timeNeededFullEfficiency to minutesToString(freeTime - amountWorkedToday)
+	set efficiencySoFar to (round (amountWorkedToday / freeTimeSoFar) * 1000) / 10
+	set efficiency to (round (amountWorkedToday / freeTime) * 1000) / 10
+	if efficiency ≥ 100 then
+		set theMessage to "You have been " & efficiency & "% efficient today."
+	else if efficiencySoFar ≥ 100 then
+		set theMessage to "You have been " & efficiencySoFar & "% efficient with your free time so far today. If you work " & timeNeededFullEfficiency & " more, you will be 100% efficient for the day."
+	else
+		set theMessage to "You have been " & efficiencySoFar & "% efficient so far today. If you work " & timeNeededFullEfficiency & " more, you will be 100% efficient for the day"
+	end if
+	return theMessage
+end getUserEfficiency
+
+-- Nil -> Number
+-- Calculates the time spent on assignment
+on calculateTimeSpent()
+	set theAssignment to whichAssignmentTime(0)
+	return getTheTotalAssignmentTime(theAssignment)
+end calculateTimeSpent
+
+-- Number -> String
+-- Asks the user to select which assignment
+on whichAssignmentTime(i)
+	set theAssignments to getTheAssignments(i)
+	set theList to (items 2 thru (count of theAssignments) of theAssignments)
+	choose from list theList with prompt "What assignment is this for?" with title "Assignments" default items (item 1 of theList)
+	set theResult to the result as text
+	if theResult is "More" then
+		set theResult to whichAssignmentTime((i + 10), theAssigments)
+	end if
+	return theResult
+end whichAssignmentTime
+
+-- [List-of TimeWindow] -> [List-of TimeWindow]
+-- Takes the free time, keeps the ones that have passed and throws out any that hasn't passed, and truncates the last one if you are in it
+on getFreeTimeWindowsSoFar(timeWindows)
+	set i to 1
+	set theList to {}
+	repeat (count of timeWindows) times
+		if (startTime of (item i of timeWindows)) > (current date) then
+			return theList
+		else
+			if (endTime of (item i of timeWindows)) < (current date) then
+				set theList to theList & {(item i of timeWindows)}
+			else
+				set theDifference to round ((((current date) - (startTime of (item i of timeWindows))) / 60))
+				set theList to theList & {{startTime:(startTime of (item i of timeWindows)), endTime:(current date), duration:theDifference}}
+			end if
+		end if
+	end repeat
+end getFreeTimeWindowsSoFar
+
+------------------------------------------------------------------------------------------------------------------------------
+
+-- Functions to determine how much time has been spent on an assignmnet
+
+-- String -> {rowStart: number, rowEnd: number}
+-- Gets the start and end rows of theAssignment
+on findAssignmentStartEndRow(theAssignment)
+	set again to true
+	set i to 1
+	repeat until again is false
+		set i to i + 1
+		set theValue to getHomeworkReminderValue((getColumnLetter("Assignment") & i) as text)
+		set again to theValue = theAssignment
+	end repeat
+	set startRow to i
+	set again to true
+	repeat until again is false
+		set i to i + 1
+		set theValue to getHomeworkReminderValue((getColumnLetter("Assignment") & i) as text)
+		set again to not (theValue = theAssignment)
+	end repeat
+	set endRow to i
+	return {rowStart:startRow, rowEnd:endRow}
+end findAssignmentStartEndRow
+
+-- String -> Number
+-- Calculates the amount of time worked on the given assignment
+on getTheTotalAssignmentTime(theAssignment)
+	sortHomeworkReminders(getColumnLetter("Assignment"), false)
+	set theStartAndEnd to findAssignmentStartEndRow(theAssignment)
+	set theAmount to 0
+	set theStart to (rowStart of theStartAndEnd)
+	set theEnd to (rowEnd of theStartAndEnd)
+	repeat with i from theStart to theEnd
+		set theValue to getHomeworkReminderValue((getColumnLetter("Actual Completion Time") & i) as text)
+		if theValue as string is "missing value" then
+		else
+			set theAmount to theAmount + theValue
+		end if
+	end repeat
+	sortHomeworkReminders(getColumnLetter("Completed"), false)
+	return theAmount
+end getTheTotalAssignmentTime
+
+main()
